@@ -1,0 +1,23 @@
+// Règles Firestore — à coller dans Firebase Console → Firestore Database
+// → onglet « Règles » → remplacer le contenu → Publier.
+//
+// Portée volontairement réduite : seuls les documents sous
+// events/{code}/state/* sont accessibles ; tout le reste de la base est
+// fermé. C'est adapté à une animation ponctuelle avec un compteur
+// public — pas à des données sensibles. N'importe qui connaissant ton
+// code d'événement (window.FIREBASE_EVENT_CODE) peut lire ET écrire ce
+// document : c'est voulu (aucune tablette ne se connecte avec un
+// compte), mais choisis un code d'événement qui n'est pas juste
+// "default" si tu veux limiter les curieux.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /events/{eventCode}/state/{docId} {
+      allow read, write: if true;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
