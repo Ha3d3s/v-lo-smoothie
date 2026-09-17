@@ -19,12 +19,12 @@
 // ─────────────────────────────────────────────────────────────────
 
 window.FIREBASE_CONFIG = {
-  apiKey: "REMPLACE_MOI",
-  authDomain: "REMPLACE_MOI.firebaseapp.com",
-  projectId: "REMPLACE_MOI",
-  storageBucket: "REMPLACE_MOI.appspot.com",
-  messagingSenderId: "REMPLACE_MOI",
-  appId: "REMPLACE_MOI"
+  apiKey: "AIzaSyDMBmRqeCjhFvk5KLU3ToAIr0UxAOah79s",
+  authDomain: "velo-smoothie.firebaseapp.com",
+  projectId: "velo-smoothie",
+  storageBucket: "velo-smoothie.firebasestorage.app",
+  messagingSenderId: "615891701926",
+  appId: "1:615891701926:web:dcc8c6d6853c37e4d1e467"
 };
 
 // Identifiant de CET événement dans la base. Change-le si tu réutilises
