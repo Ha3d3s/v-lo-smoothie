@@ -30,4 +30,4 @@ window.FIREBASE_CONFIG = {
 // Identifiant de CET événement dans la base. Change-le si tu réutilises
 // un jour le même projet Firebase pour une autre animation, pour ne pas
 // mélanger les totaux des deux événements. Lettres, chiffres, tirets.
-window.FIREBASE_EVENT_CODE = "relais-verviers-2026";
+window.FIREBASE_EVENT_CODE = "CMS-verviers-2026";
