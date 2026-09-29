@@ -96,6 +96,19 @@ phrase encourageante sur le sport et l'alimentation, tirée au hasard parmi
 plusieurs. Elle se relance automatiquement au bout de 30 secondes si
 personne n'a touché à l'écran (un compte à rebours l'indique).
 
+**Célébration quand l'objectif de l'événement est atteint** : dès que la
+distance totale franchit l'objectif fixé dans les réglages (ex. 100 km),
+un grand écran de célébration apparaît — confettis, petite fanfare
+sonore, message « Objectif atteint ! ». La barre de progression de
+l'événement passe alors dans un dégradé doré scintillant, et une puce
+« 🏆 Objectif atteint — +X km en bonus ✨ » affiche les kilomètres
+parcourus au-delà. Si plusieurs tablettes sont synchronisées (via le
+partage natif de claude.ai ou Firebase), la célébration se déclenche sur
+toutes les tablettes en même temps, pas seulement sur celle qui a franchi
+la ligne. La célébration ne se déclenche qu'une fois par objectif — si tu
+relèves l'objectif dans les réglages après l'avoir atteint, elle pourra
+se redéclencher en le franchissant à nouveau.
+
 Si le Bluetooth se coupe pendant l'événement (capteur hors de portée un
 instant, pile qui flanche), l'appli retente automatiquement la connexion
 au même capteur en arrière-plan — pas besoin de recliquer sur « Connecter

@@ -78,6 +78,16 @@ body::before{
 .eventfigures{margin:0;font-size:clamp(12px,1.4vw,15px);color:var(--muted);font-variant-numeric:tabular-nums}
 .etrack{height:clamp(10px,1.4vh,14px);border-radius:999px;background:rgba(255,244,224,.1);overflow:hidden}
 .efill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--lime),var(--mango));transition:width .5s cubic-bezier(.22,.9,.3,1)}
+.efill.gold{
+  background:linear-gradient(90deg,#8a6d00,#FFD700,#FFF3B0,#FFD700,#8a6d00);
+  background-size:250% 100%;
+  animation:goldShimmer 3s linear infinite;
+}
+@keyframes goldShimmer{ from{background-position:0% 0;} to{background-position:250% 0;} }
+.event-surplus{
+  margin:.6em 0 0;font-size:clamp(12px,1.4vw,14px);font-weight:700;
+  color:#FFD700;text-shadow:0 0 10px rgba(255,215,0,.35);
+}
 
 /* ---------- stage ---------- */
 .stage{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) clamp(220px,26vw,340px);gap:clamp(16px,3vw,44px);align-items:center}
@@ -124,6 +134,27 @@ body.freepedal #abandonBtn{display:none}
 .done-quote{font-style:italic;font-size:clamp(13.5px,1.7vw,18px)}
 .done-timer{margin-top:1em;font-size:clamp(12px,1.4vw,14px);color:var(--muted)}
 .done-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:.4em}
+
+/* ---------- confetti (canvas-free, DOM particles) ---------- */
+.confetti-layer{position:fixed;inset:0;z-index:26;pointer-events:none;overflow:hidden}
+.confetti-piece{position:absolute;top:-24px;border-radius:2px;will-change:transform,opacity;animation-name:confettiFall;animation-timing-function:cubic-bezier(.28,.6,.5,1);animation-fill-mode:forwards}
+@keyframes confettiFall{
+  0%{ transform:translate3d(0,0,0) rotate(0deg); opacity:1; }
+  100%{ transform:translate3d(var(--drift,0px),115vh,0) rotate(var(--spin,540deg)); opacity:.9; }
+}
+
+/* ---------- célébration : objectif d'événement atteint ---------- */
+.overlay#celebrationOverlay{z-index:25;background:rgba(10,4,20,.92)}
+.celebration{text-align:center;max-width:680px}
+.celebration-emoji{font-size:clamp(38px,7vw,72px);letter-spacing:.25em;margin-bottom:.3em}
+.celebration h2{
+  font-family:var(--display);font-weight:800;letter-spacing:-.04em;line-height:.9;margin:0 0 .25em;
+  font-size:clamp(42px,9vw,110px);
+  background:linear-gradient(90deg,#FFD700,#FFF3B0,#FFD700);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.celebration-text{font-family:var(--display);font-weight:700;font-size:clamp(18px,3vw,30px);color:var(--cream);margin:0 0 .5em}
+.celebration-sub{font-size:clamp(14px,1.8vw,18px);color:var(--muted);margin:0 0 1.6em}
 
 .panel{background:var(--plum-2);border:1px solid var(--line);border-radius:22px;padding:clamp(18px,3vw,30px);width:min(560px,100%);max-height:88dvh;overflow:auto}
 .panel h2{font-family:var(--display);font-weight:800;margin:0 0 .1em;font-size:clamp(22px,3vw,30px);letter-spacing:-.02em}
@@ -218,7 +249,20 @@ body.idle .track{ animation:idlePulse 2.6s ease-in-out infinite; }
       <p class="eventfigures" id="eventFigures">0,00 km sur 50 km · 0 sur 71 smoothies</p>
     </div>
     <div class="etrack"><div class="efill" id="eventFill"></div></div>
+    <p class="event-surplus" id="eventSurplus" hidden></p>
   </section>
+
+  <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
+
+  <div class="overlay" id="celebrationOverlay">
+    <div class="celebration">
+      <div class="celebration-emoji">🏆🎉🥇</div>
+      <h2>Objectif atteint&nbsp;!</h2>
+      <p class="celebration-text" id="celebrationText">100 km parcourus pour « Mon événement » !</p>
+      <p class="celebration-sub">Chaque kilomètre en plus compte désormais en bonus — en or ✨</p>
+      <button class="btn primary" id="celebrationCloseBtn" type="button">Continuer l'événement</button>
+    </div>
+  </div>
 
   <main class="stage">
     <section class="readout">
@@ -450,7 +494,7 @@ const K_BIGSIZE = "velosmoothie:bigsize";
 const DEFAULT_CFG = { mode:"auto", circumference:2100, devPerCrank:6.3, goal:1000, eventName:"Mon événement", eventGoalKm:50 };
 
 let cfg = load(K_CFG, DEFAULT_CFG);
-let tot = load(K_TOT, { total:0, current:0, count:0, bonus:0 });
+let tot = load(K_TOT, { total:0, current:0, count:0, bonus:0, celebrated:false });
 let freeMode = false;   // pédalage libre : la distance compte pour l'événement, pas pour un smoothie
 
 let last = null;          // last raw sensor sample
@@ -721,6 +765,7 @@ function ingest(s){
       if(tot.current >= cfg.goal) finishSmoothie();
     }
     save(K_TOT, tot);
+    checkEventGoal();
   }
   last = s;
   render();
@@ -818,7 +863,70 @@ function continueAsBonus(){
   setFreeMode(true);
 }
 
-/* ---------- multi-tablette : état partagé entre tous les écrans ---------- */
+/* ---------- objectif de l'événement atteint : célébration ---------- */
+function checkEventGoal(){
+  const goalM = cfg.eventGoalKm * 1000;
+  if(goalM > 0 && tot.total >= goalM && !tot.celebrated){
+    tot.celebrated = true;
+    save(K_TOT, tot);
+    celebrate();
+    schedulePush();
+  }
+}
+
+const CONFETTI_COLORS = ["#FFD700","#FFB020","#FF3D6E","#B6FF3A","#FFF4E0"];
+function launchConfetti(count){
+  const layer = $("confettiLayer");
+  for(let i = 0; i < count; i++){
+    const el = document.createElement("div");
+    el.className = "confetti-piece";
+    const size = 6 + Math.random() * 8;
+    el.style.left = (Math.random() * 100) + "vw";
+    el.style.width = size + "px";
+    el.style.height = (size * 0.4) + "px";
+    el.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+    el.style.setProperty("--drift", (Math.random() * 200 - 100) + "px");
+    el.style.setProperty("--spin", (Math.random() * 720 - 360) + "deg");
+    const duration = 2.6 + Math.random() * 1.8;
+    el.style.animationDuration = duration + "s";
+    el.style.animationDelay = (Math.random() * 0.6) + "s";
+    layer.appendChild(el);
+    setTimeout(() => el.remove(), (duration + 1) * 1000);
+  }
+}
+
+function playCelebrationFanfare(){
+  if(!soundOn || !audioCtx) return;
+  try{
+    const now = audioCtx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5]; // do-mi-sol-do-sol-do, façon fanfare
+    notes.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      gain.gain.value = 0.0001;
+      osc.connect(gain).connect(audioCtx.destination);
+      const t0 = now + i * 0.16;
+      gain.gain.exponentialRampToValueAtTime(0.28, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.42);
+      osc.start(t0);
+      osc.stop(t0 + 0.46);
+    });
+  }catch(e){}
+}
+
+function celebrate(){
+  $("celebrationText").textContent =
+    nf(cfg.eventGoalKm, cfg.eventGoalKm % 1 ? 1 : 0) + " km parcourus pour « " + cfg.eventName + " » !";
+  $("celebrationOverlay").classList.add("show");
+  playCelebrationFanfare();
+  launchConfetti(120);
+  const burst2 = setTimeout(() => launchConfetti(60), 900);
+  // ne laisse pas un minuteur orphelin si l'écran est fermé entre-temps
+  $("celebrationOverlay")._burst2 = burst2;
+}
+
 /* ---------- multi-tablette : état partagé entre tous les écrans ---------- */
 async function initCloud(){
   // 1) Priorité : stockage partagé natif de claude.ai (uniquement actif
@@ -875,7 +983,8 @@ function subscribeCloud(onlineLabel){
 function applyRemote(data){
   if(!data) return;
   if(data.cfg) cfg = {...DEFAULT_CFG, ...data.cfg};
-  if(data.tot) tot = {...{total:0,current:0,count:0,bonus:0}, ...data.tot};
+  const wasCelebrated = tot.celebrated;
+  if(data.tot) tot = {...{total:0,current:0,count:0,bonus:0,celebrated:false}, ...data.tot};
   if(typeof data.rpm === "number") rpm = data.rpm;
   if(typeof data.kmh === "number") kmh = data.kmh;
   if(typeof data.freeMode === "boolean" && data.freeMode !== freeMode){
@@ -885,6 +994,9 @@ function applyRemote(data){
   save(K_CFG, cfg);
   save(K_TOT, tot);
   render();
+  if(tot.celebrated && !wasCelebrated){
+    celebrate(); // une autre tablette vient de faire franchir l'objectif : on fête ici aussi
+  }
 }
 
 /* Regroupe les écritures (au plus une par 800 ms) pour ne pas
@@ -946,11 +1058,22 @@ function render(){
   const eventGoalM = cfg.eventGoalKm * 1000;
   const targetSmoothies = Math.max(1, Math.round(eventGoalM / cfg.goal));
   const eventPct = eventGoalM > 0 ? Math.max(0, Math.min(1, tot.total / eventGoalM)) : 0;
+  const goalReached = eventGoalM > 0 && tot.total >= eventGoalM;
   $("eventName").textContent = cfg.eventName;
   $("eventFigures").textContent =
     nf(tot.total/1000, 2) + " km sur " + nf(cfg.eventGoalKm, cfg.eventGoalKm % 1 ? 1 : 0) + " km · " +
     nf(tot.count) + " sur " + nf(targetSmoothies) + " smoothies";
   $("eventFill").style.width = (eventPct * 100) + "%";
+  $("eventFill").classList.toggle("gold", goalReached);
+
+  const surplusEl = $("eventSurplus");
+  if(goalReached){
+    const surplusKm = (tot.total - eventGoalM) / 1000;
+    surplusEl.hidden = false;
+    surplusEl.textContent = "🏆 Objectif atteint — +" + nf(surplusKm, 2) + " km en bonus ✨";
+  }else{
+    surplusEl.hidden = true;
+  }
 }
 
 function setStatus(ok, text){
@@ -1072,10 +1195,17 @@ function saveSettings(){
     mode:$("fMode").value, circumference:circ, devPerCrank:dev, goal:goal,
     eventName: eventName || DEFAULT_CFG.eventName, eventGoalKm: eventGoalKm
   };
+  // Si le nouvel objectif dépasse ce qui a déjà été parcouru, on repart
+  // sur une célébration possible en le franchissant à nouveau.
+  if(tot.total < cfg.eventGoalKm * 1000 && tot.celebrated){
+    tot.celebrated = false;
+    save(K_TOT, tot);
+  }
   save(K_CFG, cfg);
   $("settingsOverlay").classList.remove("show");
   render();
   schedulePush();
+  checkEventGoal(); // au cas où l'objectif abaissé est déjà atteint avec le total actuel
 }
 
 /* ---------- wiring ---------- */
@@ -1143,12 +1273,16 @@ $("resumeBtn").addEventListener("click", () => {
   msg.className = "resume-msg msg-ok";
   render();
   schedulePush();
+  checkEventGoal();
 });
 $("resetAllBtn").addEventListener("click", () => {
   if(confirm("Remettre à zéro la distance totale et le nombre de smoothies de l'événement ?")){
-    tot = { total:0, current:0, count:0, bonus:0 }; save(K_TOT, tot);
+    tot = { total:0, current:0, count:0, bonus:0, celebrated:false }; save(K_TOT, tot);
     $("settingsOverlay").classList.remove("show"); render(); schedulePush();
   }
+});
+$("celebrationCloseBtn").addEventListener("click", () => {
+  $("celebrationOverlay").classList.remove("show");
 });
 
 /* garder l'écran allumé sur la tablette */
